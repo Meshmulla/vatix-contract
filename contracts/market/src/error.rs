@@ -218,26 +218,79 @@ pub enum ContractError {
 
     /// Caller is not the admin for this operation.
     ///
+    /// Deny-by-default: any privileged surface (admin actions, bond policy
+    /// updates, oracle management) rejects callers that do not hold the
+    /// required role. Untrusted clients cannot bypass policy by crafting a
+    /// request that omits or forges authorization.
+    Unauthorized = 41,
+
+    /// The caller's authorization has expired.
+    ///
+    /// Time-bounded authorizations (e.g. signed admin intents) are rejected
+    /// once their deadline passes. Re-submit with a fresh authorization.
+    AuthorizationExpired = 42,
+
+    /// The caller does not hold the role required for this operation.
+    ///
+    /// Distinct from [`ContractError::Unauthorized`] so clients can surface a
+    /// precise "wrong role" message instead of a generic denial.
+    WrongRole = 43,
+
     /// Only the contract admin can perform this action.
-    NotAdmin = 41,
+    NotAdmin = 44,
 
     /// Contract has already been initialized.
     ///
     /// `initialize(admin)` may only be called once. Replaying it would allow
     /// an attacker to hijack the admin slot after initial deploy.
-    AlreadyInitialized = 42,
+    AlreadyInitialized = 45,
 
     /// No pending admin transfer exists.
     ///
     /// `accept_admin` was called but `propose_admin` has not been issued yet,
     /// or the previous proposal was already accepted.
-    NoPendingAdmin = 43,
+    NoPendingAdmin = 46,
 
     /// `confirm_renounce_admin` was called but no renounce proposal is pending.
-    NoRenounceProposal = 44,
+    NoRenounceProposal = 47,
 
     /// A renounce proposal is already pending; cannot propose again until confirmed or canceled.
-    RenounceAlreadyProposed = 45,
+    RenounceAlreadyProposed = 48,
+
+    // ========== Token Errors (50-59) ==========
+    /// Token transfer failed.
+    ///
+    /// The underlying token contract rejected the transfer (e.g. insufficient
+    /// balance or allowance).
+    TokenTransferFailed = 50,
+
+    /// The token address is invalid or unsupported.
+    InvalidToken = 51,
+
+    // ========== Arithmetic Errors (60-69) ==========
+    /// Arithmetic overflow occurred during a computation.
+    ArithmeticOverflow = 60,
+
+    /// Arithmetic underflow occurred during a computation.
+    ArithmeticUnderflow = 61,
+
+    /// Division by zero was attempted.
+    DivisionByZero = 62,
+
+    // ========== Treasury Errors (70-79) ==========
+    /// Treasury operation failed.
+    TreasuryOperationFailed = 70,
+
+    /// Treasury is not configured.
+    TreasuryNotConfigured = 71,
+
+    // ========== Reconciliation Errors (80-89) ==========
+    /// Reconciliation check failed.
+    ReconciliationFailed = 80,
+
+    // ========== Conservation Errors (90-99) ==========
+    /// A conservation invariant was violated.
+    ConservationViolation = 90,
 
     /// The requested fee rate exceeds the configured fee cap.
     ///
