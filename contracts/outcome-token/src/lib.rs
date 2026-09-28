@@ -251,6 +251,23 @@ impl OutcomeTokenContract {
         Ok(())
     }
 
+    // ── SAC metadata getters ────────────────────────────────────────────────
+
+    pub fn name(env: Env) -> String {
+        storage::get_config(&env).name
+    }
+
+    pub fn symbol(env: Env) -> String {
+        storage::get_config(&env).symbol
+    }
+
+    /// Number of decimal places. Fixed at 7 (the Stellar SAC convention) and
+    /// never stored or settable — this is the only value that can ever be
+    /// returned, so outcome tokens can never silently change scale (#929).
+    pub fn decimals(_env: Env) -> u32 {
+        7
+    }
+
     /// Mint `amount` tokens of `kind` (Yes or No) for `user` in `market_id`.
     ///
     /// Only the registered market contract may call this function.
@@ -323,6 +340,64 @@ impl OutcomeTokenContract {
         events::emit_token_burned(&env, market_id, &user, kind, amount, new_balance);
         Ok(())
     }
+
+    /// Transfer `amount` tokens of `kind` from `from` to `to` within `market_id`.
+    ///
+    /// Before resolution, positions can only change through [`Self::mint`]/
+    /// [`Self::burn`] driven by the market contract itself, so a direct
+    /// peer-to-peer transfer is rejected with
+    /// [`ContractError::MarketNotResolved`] — this keeps a market's
+    /// price-discovery phase free of secondary-market transfers of unsettled
+    /// claims.
+    ///
+    /// Once the market has resolved, peer-to-peer transfer is *also*
+    /// rejected — this time with
+    /// [`ContractError::TransferBlockedAfterResolve`] — because the market
+    /// contract's settlement logic pays out against the `Position` record it
+    /// stores for the *original* depositor's address, not against whichever
+    /// address currently holds the outcome-token balance. Allowing a transfer
+    /// here would let a holder move their balance to a fresh address
+    /// post-resolution while the original Position still entitles them to
+    /// the full payout — the same claim paid out twice (Issue #690).
+    pub fn transfer(
+        env: Env,
+        market_id: u32,
+        from: Address,
+        _to: Address,
+        _kind: TokenKind,
+        amount: i128,
+    ) -> Result<(), ContractError> {
+        if amount <= 0 {
+            return Err(ContractError::InvalidAmount);
+        }
+        from.require_auth();
+        if storage::is_paused(&env) {
+            return Err(ContractError::ContractPaused);
+        }
+        storage::assert_version(&env)?;
+
+        let config = storage::get_config(&env);
+        let status: MarketStatus = env.invoke_contract(
+            &config.market_contract,
+            &Symbol::new(&env, "get_market_status"),
+            soroban_sdk::vec![&env, market_id.into_val(&env)],
+        );
+        if status == MarketStatus::Resolved {
+            return Err(ContractError::TransferBlockedAfterResolve);
+        }
+        Err(ContractError::MarketNotResolved)
+    }
+
+    /// Return the token balance for a specific `(market_id, user, kind)` triple.
+    pub fn balance(env: Env, market_id: u32, user: Address, kind: TokenKind) -> i128 {
+        storage::get_balance(&env, market_id, &user, &kind)
+    }
+
+    /// Return the total outstanding supply for a `(market_id, kind)` pair.
+    pub fn total_supply(env: Env, market_id: u32, kind: TokenKind) -> i128 {
+        storage::get_total_supply(&env, market_id, &kind)
+    }
+}
 
     /// Return the token balance for a specific `(market_id, user, kind)` triple.
     pub fn balance(env: Env, market_id: u32, user: Address, kind: TokenKind) -> i128 {
