@@ -108,7 +108,11 @@ fn metadata_rejects_empty_name() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
 
-    client.set_metadata(&String::from_str(&env, ""), &String::from_str(&env, "vYES"), &7);
+    client.set_metadata(
+        &String::from_str(&env, ""),
+        &String::from_str(&env, "vYES"),
+        &7,
+    );
 }
 
 #[test]
@@ -117,7 +121,11 @@ fn metadata_rejects_empty_symbol() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
 
-    client.set_metadata(&String::from_str(&env, "Vatix Outcome YES"), &String::from_str(&env, ""), &7);
+    client.set_metadata(
+        &String::from_str(&env, "Vatix Outcome YES"),
+        &String::from_str(&env, ""),
+        &7,
+    );
 }
 
 #[test]

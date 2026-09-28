@@ -316,12 +316,9 @@ fn table_driven_locked_never_exceeds_deposited() {
         });
 
         assert_eq!(
-            position.locked_collateral,
-            case.expected_locked,
+            position.locked_collateral, case.expected_locked,
             "[{}] locked_collateral snapshot mismatch: got {}, want {}",
-            case.label,
-            position.locked_collateral,
-            case.expected_locked,
+            case.label, position.locked_collateral, case.expected_locked,
         );
 
         assert!(

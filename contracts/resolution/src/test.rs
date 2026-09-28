@@ -523,13 +523,19 @@ fn shrinking_default_does_not_move_existing_candidate_deadline() {
         &proposed_window,
         &BOND,
     );
-    let deadline_before = client.get_candidate(&candidate_id).unwrap().challenge_deadline;
+    let deadline_before = client
+        .get_candidate(&candidate_id)
+        .unwrap()
+        .challenge_deadline;
 
     // Shrink the default to its minimum -- if this had any binding effect on
     // live candidates, the deadline read below would move.
     client.set_default_challenge_window(&admin, &60);
 
-    let deadline_after = client.get_candidate(&candidate_id).unwrap().challenge_deadline;
+    let deadline_after = client
+        .get_candidate(&candidate_id)
+        .unwrap()
+        .challenge_deadline;
     assert_eq!(deadline_before, deadline_after);
 }
 

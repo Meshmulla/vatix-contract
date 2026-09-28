@@ -11,6 +11,14 @@ pub const MIN_DEPOSIT_AMOUNT: i128 = 10_000_000;
 /// payload size for every subsequent read of this market.
 pub const MAX_MARKET_TITLE_LENGTH: u32 = 500;
 
+/// Maximum allowed length (in bytes) for a market's `metadata_uri` (#914).
+///
+/// Metadata griefing mitigation: the URI is stored in persistent market
+/// storage and re-emitted in `MarketCreated`, so every byte is paid for by
+/// every subsequent reader/indexer. 512 bytes comfortably fits an `ipfs://`
+/// CIDv1, an `ar://` tx id, or an https URL; anything longer is rejected.
+pub const MAX_METADATA_URI_LENGTH: u32 = 512;
+
 /// Guard function to validate input before processing.
 ///
 /// This is a general-purpose validation guard that can be used in integration tests
@@ -70,11 +78,14 @@ pub fn validate_market_creation(
     Ok(())
 }
 
-/// Validates metadata URI format if provided
+/// Validates metadata URI format if provided (metadata griefing guard, #914).
 ///
 /// If metadata_uri is Some, it must:
 /// - Be non-empty
-/// - Be at most 2048 characters
+/// - Be at most [`MAX_METADATA_URI_LENGTH`] bytes
+/// - Contain only printable, non-whitespace ASCII (0x21..=0x7E), rejecting
+///   control characters, whitespace and non-ASCII bytes that could be used
+///   to spoof or corrupt the URI shown by frontends and indexers
 ///
 /// If metadata_uri is None, validation passes (optional field).
 ///
@@ -92,12 +103,13 @@ pub fn validate_market_creation(
 pub fn validate_metadata_uri(metadata_uri: &Option<String>) -> Result<(), ContractError> {
     if let Some(uri) = metadata_uri {
         let len = uri.len();
-        // Check non-empty
-        if len == 0 {
+        if len == 0 || len > MAX_METADATA_URI_LENGTH {
             return Err(ContractError::InvalidMetadataUri);
         }
-        // Check max length (2048 is standard URI limit)
-        if len > 2048 {
+        let mut buf = [0u8; MAX_METADATA_URI_LENGTH as usize];
+        let bytes = &mut buf[..len as usize];
+        uri.copy_into_slice(bytes);
+        if !bytes.iter().all(u8::is_ascii_graphic) {
             return Err(ContractError::InvalidMetadataUri);
         }
     }
@@ -737,7 +749,10 @@ mod tests {
         let env = soroban_sdk::Env::default();
         let contract_id = env.register(crate::MarketContract, ());
         env.as_contract(&contract_id, || {
-            assert_eq!(require_initialized(&env), Err(ContractError::NotInitialized));
+            assert_eq!(
+                require_initialized(&env),
+                Err(ContractError::NotInitialized)
+            );
         });
     }
 
@@ -786,7 +801,7 @@ mod tests {
     #[test]
     fn test_validate_metadata_uri_overlong_fails() {
         let env = soroban_sdk::Env::default();
-        let long_str = "a".repeat(2049);
+        let long_str = "a".repeat(MAX_METADATA_URI_LENGTH as usize + 1);
         let uri = Some(String::from_str(&env, &long_str));
         assert_eq!(
             validate_metadata_uri(&uri),
@@ -797,8 +812,25 @@ mod tests {
     #[test]
     fn test_validate_metadata_uri_exactly_max_length_passes() {
         let env = soroban_sdk::Env::default();
-        let max_str = "a".repeat(2048);
+        let max_str = "a".repeat(MAX_METADATA_URI_LENGTH as usize);
         let uri = Some(String::from_str(&env, &max_str));
         assert!(validate_metadata_uri(&uri).is_ok());
+    }
+
+    #[test]
+    fn test_validate_metadata_uri_rejects_whitespace_control_and_non_ascii() {
+        let env = soroban_sdk::Env::default();
+        for bad in [
+            "ipfs://Qm Xxx",
+            "ipfs://Qm\nXxx",
+            "ipfs://Qm\u{0}Xxx",
+            "ipfs://Qm\u{202E}Xxx",
+        ] {
+            let uri = Some(String::from_str(&env, bad));
+            assert_eq!(
+                validate_metadata_uri(&uri),
+                Err(ContractError::InvalidMetadataUri)
+            );
+        }
     }
 }

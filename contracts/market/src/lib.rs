@@ -101,7 +101,8 @@ mod withdraw;
 //
 // AUDIT NOTE (#764): cfg_attr(not(test)) keeps the suppression scoped to
 // non-test builds where the pub re-export hides usages from Clippy.
-#[cfg_attr(not(test), allow(dead_code))] // pub-exported for integration tests; helpers used in contractimpl methods
+#[cfg_attr(not(test), allow(dead_code))]
+// pub-exported for integration tests; helpers used in contractimpl methods
 pub mod storage;
 mod test;
 #[cfg(test)]

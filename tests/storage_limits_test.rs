@@ -134,4 +134,3 @@ fn market_participants_vec_storage_limits_test() {
     assert!(budget.cpu_instruction_cost() > 0);
     assert!(budget.memory_bytes_cost() > 0);
 }
-

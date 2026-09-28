@@ -23,16 +23,13 @@ fn market_env() -> (Env, Address, Address, Address) {
     env.mock_all_auths();
     let (admin, contract_id) = register_contract(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin)
+        .address();
     (env, admin, contract_id, token)
 }
 
-fn make_market(
-    client: &MarketContractClient,
-    env: &Env,
-    admin: &Address,
-    token: &Address,
-) -> u32 {
+fn make_market(client: &MarketContractClient, env: &Env, admin: &Address, token: &Address) -> u32 {
     let mut params = MarketParams::default_valid(env);
     params.collateral_token = token.clone();
     client.initialize_market(
@@ -379,7 +376,9 @@ fn market_set_and_get_threshold_signers() {
 
     let signer = BytesN::from_array(&env, &[1u8; 32]);
     let signers = soroban_sdk::vec![&env, signer.clone()];
-    client.propose_threshold_signers(&admin, &signers, &1u32).unwrap();
+    client
+        .propose_threshold_signers(&admin, &signers, &1u32)
+        .unwrap();
     env.ledger()
         .set_timestamp(env.ledger().timestamp() + vatix_market_contract::FEE_RATE_TIMELOCK_SECONDS);
     client.execute_threshold_signers().unwrap();
@@ -491,7 +490,9 @@ fn treasury_withdraw_fees_transfers_to_recipient() {
     let admin = Address::generate(&env);
     let market = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin)
+        .address();
     client.initialize(&admin, &market);
 
     StellarAssetClient::new(&env, &token).mint(&tid, &2_000i128);
@@ -520,7 +521,9 @@ fn treasury_set_market_contract_rotates_authorized_caller() {
     client.initialize(&admin, &old_market);
 
     client.set_market_contract(&admin, &new_market);
-    assert!(client.try_collect_fee(&old_market, &token, &1u32, &100i128).is_err());
+    assert!(client
+        .try_collect_fee(&old_market, &token, &1u32, &100i128)
+        .is_err());
     client.collect_fee(&new_market, &token, &1u32, &100i128);
     assert_eq!(client.total_collected(), 100);
 }
@@ -552,7 +555,9 @@ fn resolution_initialize_stores_config() {
     let factory = Address::generate(&env);
     let market_contract = Address::generate(&env);
 
-    client.initialize(&admin, &factory, &market_contract).unwrap();
+    client
+        .initialize(&admin, &factory, &market_contract)
+        .unwrap();
     let config = client.get_config();
     assert_eq!(config.factory, factory);
     assert_eq!(config.market_contract, market_contract);
@@ -567,7 +572,9 @@ fn resolution_set_factory_updates_config() {
     let rid = env.register(ResolutionContract, ());
     let client = ResolutionContractClient::new(&env, &rid);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &Address::generate(&env), &Address::generate(&env)).unwrap();
+    client
+        .initialize(&admin, &Address::generate(&env), &Address::generate(&env))
+        .unwrap();
 
     let new_factory = Address::generate(&env);
     client.set_factory(&admin, &new_factory).unwrap();
@@ -581,14 +588,18 @@ fn resolution_set_market_contract_updates_config() {
     let rid = env.register(ResolutionContract, ());
     let client = ResolutionContractClient::new(&env, &rid);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &Address::generate(&env), &Address::generate(&env)).unwrap();
+    client
+        .initialize(&admin, &Address::generate(&env), &Address::generate(&env))
+        .unwrap();
 
     let new_market = Address::generate(&env);
     client.set_market_contract(&admin, &new_market).unwrap();
     assert_eq!(client.get_config().market_contract, new_market);
 }
 
-use vatix_outcome_token_contract::{OutcomeTokenContract, OutcomeTokenContractClient, types::TokenKind};
+use vatix_outcome_token_contract::{
+    types::TokenKind, OutcomeTokenContract, OutcomeTokenContractClient,
+};
 
 fn ot_setup(env: &Env) -> (OutcomeTokenContractClient<'_>, Address, Address) {
     env.mock_all_auths();
@@ -679,7 +690,9 @@ fn outcome_token_non_admin_cannot_set_market_contract() {
     let (client, _admin, _market) = ot_setup(&env);
     let stranger = Address::generate(&env);
     let new_market = Address::generate(&env);
-    assert!(client.try_set_market_contract(&stranger, &new_market).is_err());
+    assert!(client
+        .try_set_market_contract(&stranger, &new_market)
+        .is_err());
 }
 
 // ── OutcomeToken: decimals ────────────────────────────────────────────────────
@@ -820,7 +833,9 @@ fn market_settle_positions_page_and_void_market_entrypoints() {
 
     let (oracle_pubkey, signing_key) = oracle_keypair(&env);
     let token_admin = Address::generate(&env);
-    let token = env.register_stellar_asset_contract_v2(token_admin).address();
+    let token = env
+        .register_stellar_asset_contract_v2(token_admin)
+        .address();
 
     let end_time = env.ledger().timestamp() + 86_400;
     let market_id = client.initialize_market(
@@ -856,4 +871,3 @@ fn market_settle_positions_page_and_void_market_entrypoints() {
     client.set_resolution_contract(&admin, &res).unwrap();
     client.void_market(&res, &market_id2);
 }
-
