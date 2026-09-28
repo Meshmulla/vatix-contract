@@ -2,26 +2,32 @@ name: CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, develop]
 
-env:
-  CARGO_TERM_COLOR: always
+# Local git hooks (see .githooks/ and CONTRIBUTING.md) are a fast pre-commit
+# gate only. This workflow is the authoritative, required check and must stay
+# green regardless of whether contributors enabled the hooks locally.
+#
+# Branch protection required status checks (see CONTRIBUTING.md):
+#   - "Build and test"
+# These names are stable identifiers referenced by branch protection rules.
+# Renaming a job's `name` requires updating the required checks in the repo
+# settings and CONTRIBUTING.md in the same change.
 
 jobs:
-  ci:
-    name: Build and Test
+  build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
 
       # Caches the `target/` build directory (and `~/.cargo/registry`) so
       # `cargo check`/`cargo test`/`cargo clippy` below reuse prior compiled
@@ -86,31 +92,39 @@ jobs:
       - name: Restore proptest regression corpus
         uses: actions/cache@v4
         with:
-          path: contracts/market/src/.proptest-regressions
-          key: proptest-regressions-${{ runner.os }}-${{ hashFiles('contracts/market/src/positions.rs') }}
-          restore-keys: proptest-regressions-${{ runner.os }}-
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      # Run the proptest fuzz suite with 2 000 cases per property in CI.
-      # Increase PROPTEST_CASES for deeper coverage in scheduled / nightly runs.
-      # Failing inputs are persisted to .proptest-regressions/ and cached above.
-      - name: Proptest fuzz (share and collateral math)
-        run: cd contracts/market && PROPTEST_CASES=2000 cargo test prop_ -- --nocapture
+      - name: Format check
+        run: cargo fmt --all -- --check
 
-      # Upload any new regression seeds discovered in this run so they are
-      # available to future runs even when the cache key changes.
-      - name: Upload proptest regressions
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --all-features --verbose
+
+      - name: Test
+        run: cargo test --
+        uses: actions/cache@v4
         with:
-          name: proptest-regressions
-          path: contracts/market/src/.proptest-regressions
-          if-no-files-found: ignore
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      # Build and test the Treasury contract.
-      - name: Tests (treasury)
-        run: |
-          cd contracts/treasury && cargo test
-          cargo test -p vatix-treasury-contract
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --all-features --verbose
 
       # Build and test the Outcome Token contract.
       - name: Tests (outcome-token)

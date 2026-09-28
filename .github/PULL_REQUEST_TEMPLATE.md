@@ -42,7 +42,7 @@ role / timelock gate). CI job "AUTH_TABLE coverage (#892)" runs
 
 - [ ] Unit tests for invariants and auth negatives
 - [ ] Integration/e2e on the critical path
-- [ ] CI green
+- [ ] CI green — all required status checks pass (see [CONTRIBUTING.md](../CONTRIBUTING.md#required-ci-status-checks) for the branch-protection check names)
 
 ## Rollback / flag strategy
 

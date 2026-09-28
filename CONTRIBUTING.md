@@ -12,9 +12,30 @@ Vatix-Protocol monorepo. For security-sensitive changes, also read
 
 Install pnpm if you do not have it:
 
+- **Node.js** >= 18
+- **pnpm** >= 8 (the workspace is managed with pnpm; do not use npm/yarn)
+- **Rust** toolchain (for `contracts/*` crates)
+
+Install pnpm if you do not have it:
+
 ```sh
 corepack enable
 corepack prepare pnpm@latest --activate
+```
+
+## Workspace layout
+
+The monorepo is a pnpm workspace. Packages are declared in
+[`pnpm-workspace.yaml`](./pnpm-workspace.yaml):
+
+- `apps/*` — frontend / service applications
+- `contracts/*` — Soroban contract crates and their tooling
+
+## Tooling scripts
+
+All workspace operations are driven from the root [`package.json`](./package.json)
+and delegate to every workspace package via `pnpm -r` / `--filter`. Scripts are
+**fail-closed**: any package failure exits non-zero and aborts the run. Do n
 ```
 
 ## Workspace layout
@@ -132,10 +153,7 @@ stellar contract invoke --id <contract-id> --source <non-admin-identity> \
   against stale state. Reads may retry; writes must not.
 - **No secrets in repo or logs.** Use named `stellar` identities backed by
   the local keystore; never commit secret keys, mnemonics, or `.env` files
-  containing them, and never echo them in deploy output.
-- **Idempotency.** Re-running the deploy path against an already-initialized
-  contract must fail closed (not re-initialize). Re-running a read-only
-  smoke check is safe.
+  containing them, and never echo th
 
 ### Testnet vs mainnet / address drift
 
