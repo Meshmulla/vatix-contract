@@ -1254,7 +1254,9 @@ mod tests {
         let market_id = client.initialize_market(
             &admin, &question, &end_time, &oracle_pubkey, &collateral_token, &None,
         );
-        client.set_outcome_token_contract(&admin, &ot_contract_id);
+        env.as_contract(&contract_id, || {
+            storage::set_outcome_token_contract(&env, &ot_contract_id)
+        });
 
         let user1 = Address::generate(&env);
         let user2 = Address::generate(&env);
@@ -1503,7 +1505,9 @@ mod tests {
         let market_id = client.initialize_market(
             &admin, &question, &end_time, &oracle_pubkey, &collateral_token, &None,
         );
-        client.set_outcome_token_contract(&admin, &ot_contract_id);
+        env.as_contract(&contract_id, || {
+            storage::set_outcome_token_contract(&env, &ot_contract_id)
+        });
 
         let user = Address::generate(&env);
         sac.mint(&user, &DEPOSIT);
